@@ -1,16 +1,16 @@
 import {Column, Entity, PrimaryGeneratedColumn} from "typeorm";
 
 @Entity()
-export class User {
+export class RunningRecord {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column()
-    email: string;
+    distance: number;
+
+    @Column('time')
+    workoutTime: string;
 
     @Column()
-    password: string;
-
-    @Column()
-    name: string;
+    date: Date;
 }
