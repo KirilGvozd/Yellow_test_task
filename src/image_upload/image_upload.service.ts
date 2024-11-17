@@ -1,7 +1,6 @@
-import {BadRequestException, Injectable, UnauthorizedException} from '@nestjs/common';
+import {BadRequestException, Injectable} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
-import {Express} from "express";
 
 @Injectable()
 export class ImageUploadService {
