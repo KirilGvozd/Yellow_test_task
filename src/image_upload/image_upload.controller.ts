@@ -1,4 +1,4 @@
-import {Controller, Post, Body, UseInterceptors, UploadedFile, Get} from '@nestjs/common';
+import {Controller, Post, UseInterceptors, UploadedFile, Get} from '@nestjs/common';
 import { ImageUploadService } from './image_upload.service';
 import {FileInterceptor} from "@nestjs/platform-express";
 import {ApiBody, ApiConsumes, ApiOperation} from "@nestjs/swagger";
