@@ -1,34 +1,42 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { RunningRecordService } from './running_record.service';
-import { CreateRunningRecordDto } from './dto/create-running_record.dto';
-import { UpdateRunningRecordDto } from './dto/update-running_record.dto';
+import {Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards} from '@nestjs/common';
+import {RunningRecordService} from './running_record.service';
+import {CreateRunningRecordDto} from './dto/create-running_record.dto';
+import {JwtAuthGuard} from "../auth/jwt-auth.guard";
+import {request} from "express";
 
+@UseGuards(JwtAuthGuard)
 @Controller('running-record')
 export class RunningRecordController {
   constructor(private readonly runningRecordService: RunningRecordService) {}
 
+
   @Post()
-  create(@Body() createRunningRecordDto: CreateRunningRecordDto) {
+  create(@Req() request, @Body() createRunningRecordDto: CreateRunningRecordDto) {
+    createRunningRecordDto.userId = +request.user.userId;
     return this.runningRecordService.create(createRunningRecordDto);
   }
 
   @Get()
-  findAll() {
-    return this.runningRecordService.findAll();
+  findAll(@Req() request) {
+    const userId = +request.user.userId;
+    return this.runningRecordService.findAll(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.runningRecordService.findOne(+id);
+  findOne(@Param('id') id: string, @Req() request) {
+    const userId = +request.user.userId;
+    return this.runningRecordService.findOne(+id, userId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRunningRecordDto: UpdateRunningRecordDto) {
-    return this.runningRecordService.update(+id, updateRunningRecordDto);
+  update(@Param('id') id: string, @Body() runningRecordDto: CreateRunningRecordDto, @Req() request) {
+    const userId = +request.user.userId;
+    return this.runningRecordService.update(+id, userId, runningRecordDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.runningRecordService.remove(+id);
+  remove(@Param('id') id: string, @Req() request) {
+    const userId = +request.user.userId;
+    return this.runningRecordService.remove(+id, userId);
   }
 }

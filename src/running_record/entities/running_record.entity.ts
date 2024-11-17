@@ -1,4 +1,5 @@
-import {Column, Entity, PrimaryGeneratedColumn} from "typeorm";
+import {Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn} from "typeorm";
+import {User} from "../../auth/entities/user.entity";
 
 @Entity()
 export class RunningRecord {
@@ -6,6 +7,9 @@ export class RunningRecord {
     id: number;
 
     @Column()
+    userId: number;
+
+    @Column("decimal")
     distance: number;
 
     @Column('time')
@@ -13,4 +17,8 @@ export class RunningRecord {
 
     @Column()
     date: Date;
+
+    @ManyToOne(() => User, (user) => user.id)
+    @JoinColumn({name: 'userId'})
+    user: User;
 }

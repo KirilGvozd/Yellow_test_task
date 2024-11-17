@@ -1,26 +1,63 @@
-import { Injectable } from '@nestjs/common';
+import {Injectable, UnauthorizedException} from '@nestjs/common';
 import { CreateRunningRecordDto } from './dto/create-running_record.dto';
-import { UpdateRunningRecordDto } from './dto/update-running_record.dto';
+import {Repository} from "typeorm";
+import {RunningRecord} from "./entities/running_record.entity";
+import {InjectRepository} from "@nestjs/typeorm";
+import {UpdateRunningRecordDto} from "./dto/update-running_record.dto";
 
 @Injectable()
 export class RunningRecordService {
-  create(createRunningRecordDto: CreateRunningRecordDto) {
-    return 'This action adds a new runningRecord';
+  constructor(
+      @InjectRepository(RunningRecord)
+      private recordRepository: Repository<RunningRecord>
+  ) {}
+
+  async create(runningRecordDto: CreateRunningRecordDto) {
+    await this.recordRepository.save(runningRecordDto);
   }
 
-  findAll() {
-    return `This action returns all runningRecord`;
+  async findAll(userId: number) {
+    return await this.recordRepository.find({
+      where: {userId},
+    });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} runningRecord`;
+  async findOne(id: number, userId: number) {
+    const record = await this.recordRepository.findOne({
+      where: {id, userId}
+        }
+    )
+
+    if (!record) {
+      throw new UnauthorizedException('Workout not found or you do not have permission to access it');
+    }
+
+    return record;
   }
 
-  update(id: number, updateRunningRecordDto: UpdateRunningRecordDto) {
-    return `This action updates a #${id} runningRecord`;
+  async update(id: number, userId: number, updateRunningRecordDto: UpdateRunningRecordDto) {
+    const record = await this.recordRepository.findOne({
+          where: {id, userId}
+        }
+    )
+
+    if (!record) {
+      throw new UnauthorizedException('Workout not found or you do not have permission to access it');
+    }
+
+    return await this.recordRepository.update(id, updateRunningRecordDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} runningRecord`;
+  async remove(id: number, userId: number) {
+    const record = await this.recordRepository.findOne({
+          where: {id, userId}
+        }
+    )
+
+    if (!record) {
+      throw new UnauthorizedException('Workout not found or you do not have permission to access it');
+    }
+
+    return await this.recordRepository.delete(id);
   }
 }
