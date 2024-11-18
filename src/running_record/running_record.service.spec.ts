@@ -1,119 +1,224 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { RunningRecordController } from './running_record.controller';
 import { RunningRecordService } from './running_record.service';
-import { UnauthorizedException } from '@nestjs/common';
-import { CreateRunningRecordDto } from './dto/create-running_record.dto';
-import { UpdateRunningRecordDto } from './dto/update-running_record.dto';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { User } from '../auth/entities/user.entity';
+import { Repository } from 'typeorm';
 import { RunningRecord } from './entities/running_record.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { UnauthorizedException } from '@nestjs/common';
 
 describe('RunningRecordService', () => {
   let service: RunningRecordService;
-
-  const mockRunningRecordService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    getWeeklySummary: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockRunningRecordRepository = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    save: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  }
+  let recordRepository: Repository<RunningRecord>;
 
   beforeEach(async () => {
-
     const module: TestingModule = await Test.createTestingModule({
-      controllers: [RunningRecordController],
       providers: [
-        {
-          provide: RunningRecordService,
-          useValue: mockRunningRecordService,
-        },
+        RunningRecordService,
         {
           provide: getRepositoryToken(RunningRecord),
-          useValue: mockRunningRecordRepository,
+          useClass: Repository,
         },
       ],
     }).compile();
 
     service = module.get<RunningRecordService>(RunningRecordService);
+    recordRepository = module.get<Repository<RunningRecord>>(
+      getRepositoryToken(RunningRecord),
+    );
   });
 
-  it('should create a running record', async () => {
-    const createDto: CreateRunningRecordDto = { distance: 5, workoutTime: '00:30:00', date: new Date(), userId: 1 };
-
-    jest.spyOn(mockRunningRecordRepository, 'save').mockResolvedValue(createDto);
-    await mockRunningRecordRepository.save(createDto);
-
-    expect(mockRunningRecordRepository.save).toHaveBeenCalledWith(createDto);
-    expect(mockRunningRecordRepository.save).toHaveBeenCalledTimes(1);
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  it('should get all running records for a user', async () => {
-    const records = [{ distance: 5, workoutTime: '00:30:00', date: new Date() }];
-    service.findAll = jest.fn().mockResolvedValue(records);
+  describe('create', () => {
+    it('should save a running record with valid data', async () => {
+      const saveSpy = jest.spyOn(recordRepository, 'save').mockResolvedValue(undefined);
 
-    const response = await service.findAll(1);
-    expect(response).toEqual(records);
-    expect(service.findAll).toHaveBeenCalledWith(1);
+      const dto = {
+        distance: 5.5,
+        userId: 1,
+        workoutTime: '00:30:00',
+        date: new Date('2024-11-01'),
+      };
+      await service.create(dto);
+
+      expect(saveSpy).toHaveBeenCalledWith(dto);
+    });
   });
 
-  it('should get weekly summary', async () => {
-    const records = [
-      { userId: 1, distance: 5, workoutTime: '00:30:00', date: new Date('2024-01-03') },
-    ];
+  describe('findAll', () => {
+    it('should return all running records for a user', async () => {
+      const mockRecords = [
+        {
+          user: {
+            id: 1,
+            email: 'test@test.com',
+            password: 'password',
+            name: 'Name'
+          },
+          id: 1, userId: 1, distance: 5.5, workoutTime: '00:30:00', date: new Date('2024-11-01') },
+      ];
+      const findSpy = jest.spyOn(recordRepository, 'find').mockResolvedValue(mockRecords);
 
-    const summary = [
-      { weekNumber: 1, averageSpeed: '10.00', averageTime: '00:30:00', totalDistance: 5 },
-    ];
-    service.getWeeklySummary = jest.fn().mockResolvedValue(summary);
+      const result = await service.findAll(1);
 
-    mockRunningRecordRepository.find.mockResolvedValue(records);
-
-    const response = await service.getWeeklySummary(1);
-
-    expect(response).toEqual(expect.arrayContaining(summary));
+      expect(result).toEqual(mockRecords);
+      expect(findSpy).toHaveBeenCalledWith({
+        where: { userId: 1 },
+      });
+    });
   });
 
+  describe('findOne', () => {
+    it('should return a record if it exists and belongs to the user', async () => {
+      const mockRecord = {
+        user: {
+          id: 1,
+          email: 'test@test.com',
+          password: 'password',
+          name: 'Name'
+        },
+        id: 1, userId: 1, distance: 5.5, workoutTime: '00:30:00', date: new Date('2024-11-01') };
+      const findOneSpy = jest.spyOn(recordRepository, 'findOne').mockResolvedValue(mockRecord);
 
-  it('should get a single running record by ID', async () => {
-    const record = { distance: 5, workoutTime: '00:30:00', date: new Date() };
-    service.findOne = jest.fn().mockResolvedValue(record);
+      const result = await service.findOne(1, 1);
 
-    const response = await service.findOne(1, 1);
-    expect(response).toEqual(record);
+      expect(result).toEqual(mockRecord);
+      expect(findOneSpy).toHaveBeenCalledWith({
+        where: { id: 1, userId: 1 },
+      });
+    });
+
+    it('should throw UnauthorizedException if record is not found', async () => {
+      jest.spyOn(recordRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.findOne(1, 1)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
   });
 
-  it('should update a running record', async () => {
-    const updateDto: UpdateRunningRecordDto = { distance: 6, workoutTime: '00:35:00', date: new Date() };
+  describe('update', () => {
+    it('should update a record with valid data', async () => {
+      const mockRecord = {
+        user: {
+          id: 1,
+          email: 'test@test.com',
+          password: 'password',
+          name: 'Name'
+        },
+        id: 1, userId: 1, distance: 5.5, workoutTime: '00:30:00', date: new Date('2024-11-01') };
+      jest.spyOn(recordRepository, 'findOne').mockResolvedValue(mockRecord);
+      const updateSpy = jest.spyOn(recordRepository, 'update').mockResolvedValue(undefined);
 
-    jest.spyOn(mockRunningRecordRepository, 'update').mockResolvedValue(updateDto);
-    await mockRunningRecordRepository.update(updateDto);
+      const updateDto = { distance: 6.0, workoutTime: '00:35:00', date: new Date('2024-11-02') };
+      await service.update(1, 1, updateDto);
 
-    expect(mockRunningRecordRepository.save).toHaveBeenCalledTimes(1);
+      expect(updateSpy).toHaveBeenCalledWith(1, updateDto);
+    });
+
+    it('should throw UnauthorizedException if record is not found', async () => {
+      jest.spyOn(recordRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        service.update(1, 1, { distance: 6.0, workoutTime: '00:35:00', date: new Date('2024-11-02') }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
-  it('should delete a running record', async () => {
+  describe('remove', () => {
+    it('should delete a record if it exists and belongs to the user', async () => {
+      const mockRecord = {
+        user: {
+          id: 1,
+          email: 'test@test.com',
+          password: 'password',
+          name: 'Name'
+        },
+        id: 1, userId: 1, distance: 5.5, workoutTime: '00:30:00', date: new Date('2024-11-01') };
+      jest.spyOn(recordRepository, 'findOne').mockResolvedValue(mockRecord);
+      const deleteSpy = jest.spyOn(recordRepository, 'delete').mockResolvedValue(undefined);
 
-    jest.spyOn(mockRunningRecordRepository, 'delete').mockResolvedValue(undefined);
-    await mockRunningRecordRepository.delete(1, 1);
+      await service.remove(1, 1);
 
-    expect(mockRunningRecordRepository.delete).toHaveBeenCalledWith(1, 1);
-    expect(mockRunningRecordRepository.delete).toHaveBeenCalledTimes(1);
+      expect(deleteSpy).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw UnauthorizedException if record is not found', async () => {
+      jest.spyOn(recordRepository, 'findOne').mockResolvedValue(null);
+
+      await expect(service.remove(1, 1)).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
   });
 
-  it('should throw UnauthorizedException if record is not found', async () => {
-    service.findOne = jest.fn().mockRejectedValue(new UnauthorizedException('Workout not found'));
+  describe('getWeeklySummary', () => {
+    it('should return weekly summaries with valid calculations', async () => {
+      const mockRecords = [
+        {
+          id: 1,
+          user: {
+            id: 1,
+            email: 'test@test.com',
+            password: 'password',
+            name: 'Name'
+          },
+          userId: 1,
+          date: new Date('2024-01-03'),
+          distance: 10.0,
+          workoutTime: '01:00:00',
+        },
+        {
+          id: 2,
+          user: {
+            id: 1,
+            email: 'test@test.com',
+            password: 'password',
+            name: 'Name'
+          },
+          userId: 1,
+          date: new Date('2024-01-10'),
+          distance: 5.0,
+          workoutTime: '00:30:00',
+        },
+      ];
+      jest.spyOn(recordRepository, 'find').mockResolvedValue(mockRecords);
 
-    await expect(service.findOne(999, 1)).rejects.toThrow(UnauthorizedException);
-    expect(service.findOne).toHaveBeenCalledWith(999, 1);
+      const result = await service.getWeeklySummary(1);
+
+      expect(result).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            weekNumber: 1,
+            totalDistance: 10,
+            averageTime: '01:00:00',
+            averageSpeed: '10.00',
+          }),
+          expect.objectContaining({
+            weekNumber: 2,
+            totalDistance: 5,
+            averageTime: '00:30:00',
+            averageSpeed: '10.00',
+          }),
+        ]),
+      );
+    });
+  });
+
+  describe('getWeekNumber', () => {
+    it('should calculate the correct week number', () => {
+      const date = new Date('2024-01-03');
+      const result = service['getWeekNumber'](date);
+      expect(result).toBe(1);
+    });
+  });
+
+  describe('formatSeconds', () => {
+    it('should format seconds into HH:mm:ss correctly', () => {
+      const time: number = 3661;
+      const result: string = service['formatSeconds'](time);
+      expect(result).toBe('01:01:01');
+    });
   });
 });
