@@ -4,6 +4,9 @@ import { RunningRecordService } from './running_record.service';
 import { UnauthorizedException } from '@nestjs/common';
 import { CreateRunningRecordDto } from './dto/create-running_record.dto';
 import { UpdateRunningRecordDto } from './dto/update-running_record.dto';
+import { RunningRecord } from './entities/running_record.entity';
+import { User } from '../auth/entities/user.entity';
+import { request } from 'express';
 
 describe('RunningRecordController', () => {
   let controller: RunningRecordController;
@@ -34,67 +37,87 @@ describe('RunningRecordController', () => {
   });
 
   it('should create a running record', async () => {
-    const createDto: CreateRunningRecordDto = { distance: 5, workoutTime: '00:30:00', date: new Date(), userId: 1 };
-    const result = { message: 'Record created successfully' };
+    const mockRequest = { user: { userId: '1' } };
+    const mockDto: CreateRunningRecordDto = {
+      userId: null,
+      distance: 5,
+      workoutTime: "00:30:00",
+      date: new Date(),
+    };
+    jest.spyOn(service, "create").mockResolvedValue()
 
-    service.create = jest.fn().mockResolvedValue(result);
+    await controller.create(mockRequest, mockDto);
 
-    const response = await controller.create({ user: { userId: 1 } }, createDto);
-    expect(response).toEqual(result);
-    expect(service.create).toHaveBeenCalledWith({ ...createDto, userId: 1 });
+    expect(service.create).toHaveBeenCalledWith({...mockDto, userId: +mockRequest.user.userId});
+    expect(service.create).toHaveBeenCalledTimes(1);
   });
 
   it('should get all running records for a user', async () => {
-    const records = [{ distance: 5, workoutTime: '00:30:00', date: new Date() }];
-    service.findAll = jest.fn().mockResolvedValue(records);
 
-    const response = await controller.findAll({ user: { userId: 1 } });
+    const records: RunningRecord[] = [{
+      user: {id: 1, password: "1234", email: "example@example.com", name: "Example"},
+      id:1, userId: 1, distance: 5, workoutTime: '00:30:00', date: new Date() }];
+
+    jest.spyOn(service, "findAll").mockResolvedValue(records);
+
+    const response = await controller.findAll({user: {userId: 1}});
     expect(response).toEqual(records);
-    expect(service.findAll).toHaveBeenCalledWith(1);
+    expect(service.findAll).toHaveBeenCalledWith(records[0].userId);
+    expect(service.findAll).toHaveBeenCalledTimes(1);
   });
 
   it('should get weekly summary', async () => {
     const summary = [{ weekNumber: 1, averageSpeed: '5.6', averageTime: '00:30:00', totalDistance: 5 }];
-    service.getWeeklySummary = jest.fn().mockResolvedValue(summary);
+    const user = { user: { userId: 1 } }
 
-    const response = await controller.getWeeklySummary({ user: { userId: 1 } });
+    jest.spyOn(service, "getWeeklySummary").mockResolvedValue(summary);
+
+    const response = await controller.getWeeklySummary(user);
     expect(response).toEqual(summary);
-    expect(service.getWeeklySummary).toHaveBeenCalledWith(1);
+    expect(service.getWeeklySummary).toHaveBeenCalledWith(user.user.userId);
+    expect(service.getWeeklySummary).toHaveBeenCalledTimes(1);
   });
 
   it('should get a single running record by ID', async () => {
-    const record = { distance: 5, workoutTime: '00:30:00', date: new Date() };
-    service.findOne = jest.fn().mockResolvedValue(record);
+    const record = { user: {id: 1, password: "1234", email: "example@example.com", name: "Example"},
+      id:1, userId: 1, distance: 5, workoutTime: '00:30:00', date: new Date() };
+
+    jest.spyOn(service, "findOne").mockResolvedValue(record)
 
     const response = await controller.findOne('1', { user: { userId: 1 } });
     expect(response).toEqual(record);
-    expect(service.findOne).toHaveBeenCalledWith(1, 1);
+    expect(service.findOne).toHaveBeenCalledWith(record.id, record.user.id)
+    expect(service.findOne).toHaveBeenCalledTimes(1);
   });
 
   it('should update a running record', async () => {
     const updateDto: UpdateRunningRecordDto = { distance: 6, workoutTime: '00:35:00', date: new Date() };
-    const result = { message: 'Record updated successfully' };
 
-    service.update = jest.fn().mockResolvedValue(result);
+    jest.spyOn(service, 'update').mockResolvedValue();
 
-    const response = await controller.update('1', updateDto, { user: { userId: 1 } });
-    expect(response).toEqual(result);
+    await controller.update('1', updateDto, { user: { userId: 1 } });
+
     expect(service.update).toHaveBeenCalledWith(1, 1, updateDto);
+    expect(service.update).toHaveBeenCalledTimes(1);
   });
 
   it('should delete a running record', async () => {
-    const result = { message: 'Record deleted successfully' };
 
-    service.remove = jest.fn().mockResolvedValue(result);
+    jest.spyOn(service, 'remove').mockResolvedValue();
 
-    const response = await controller.remove('1', { user: { userId: 1 } });
-    expect(response).toEqual(result);
+    await controller.remove('1', { user: { userId: 1 } });
+
     expect(service.remove).toHaveBeenCalledWith(1, 1);
+    expect(service.remove).toHaveBeenCalledTimes(1);
   });
 
   it('should throw UnauthorizedException if record is not found', async () => {
-    service.findOne = jest.fn().mockRejectedValue(new UnauthorizedException('Workout not found'));
+    const user = { user: { userId: 1 }, }
 
-    await expect(controller.findOne('999', { user: { userId: 1 } })).rejects.toThrow(UnauthorizedException);
+    jest.spyOn(service, 'findOne').mockRejectedValue(new UnauthorizedException('Workout not found'))
+
+    await expect(controller.findOne('999', user )).rejects.toThrow(UnauthorizedException);
+    expect(service.findOne).toHaveBeenCalledWith(999, user.user.userId);
+    expect(service.findOne).toHaveBeenCalledTimes(1);
   });
 });

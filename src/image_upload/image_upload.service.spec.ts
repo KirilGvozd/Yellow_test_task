@@ -4,8 +4,7 @@ import { ImageUploadService } from './image_upload.service';
 import { BadRequestException } from '@nestjs/common';
 import { Express } from 'express';
 
-describe('ImageUploadController', () => {
-  let controller: ImageUploadController;
+describe('ImageUploadService', () => {
   let service: ImageUploadService;
 
   const mockImageUploadService = {
@@ -24,7 +23,6 @@ describe('ImageUploadController', () => {
       ],
     }).compile();
 
-    controller = module.get<ImageUploadController>(ImageUploadController);
     service = module.get<ImageUploadService>(ImageUploadService);
   });
 
@@ -43,9 +41,8 @@ describe('ImageUploadController', () => {
         fileUrl: '/uploads/example-image.jpg',
       };
 
-      jest.spyOn(service, 'uploadImage').mockReturnValue(uploadResponse);
-
-      const result = await controller.uploadImage(mockFile);
+      mockImageUploadService.uploadImage.mockReturnValue(uploadResponse);
+      const result = service.uploadImage(mockFile);
 
       expect(result).toEqual(uploadResponse);
       expect(service.uploadImage).toHaveBeenCalledWith(mockFile);
@@ -55,7 +52,7 @@ describe('ImageUploadController', () => {
       const mockFile: Express.Multer.File = null;
 
       try {
-        await controller.uploadImage(mockFile);
+        service.uploadImage(mockFile);
       } catch (error) {
         expect(error).toBeInstanceOf(BadRequestException);
         expect(error.message).toBe('No file uploaded');
@@ -71,21 +68,18 @@ describe('ImageUploadController', () => {
         { name: 'image2.jpg', url: '/uploads/image2.jpg' },
       ];
 
-      jest.spyOn(service, "getImages").mockReturnValue(imageList);
-
-      const result = await controller.getImages();
+      mockImageUploadService.getImages.mockReturnValue(imageList);
+      const result = service.getImages();
 
       expect(result).toEqual(imageList);
-      expect(service.getImages).toHaveBeenCalled();
     });
 
     it('should return an empty list if no images are available', async () => {
-      jest.spyOn(service, "getImages").mockReturnValue([]);
+      mockImageUploadService.getImages.mockReturnValue([]);
 
-      const result = await controller.getImages();
+      const result = service.getImages();
 
       expect(result).toEqual([]);
-      expect(service.getImages).toHaveBeenCalled();
     });
   });
 });

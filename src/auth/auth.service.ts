@@ -42,8 +42,8 @@ constructor(
     }
 
     return await this.jwtService.signAsync(
-        {id: user.id},
-        {secret: process.env.JWT_SECRET, expiresIn: process.env.JWT_TOKEN_EXPIRE}
+        { id: user.id },
+        { secret: process.env.JWT_SECRET, expiresIn: process.env.JWT_TOKEN_EXPIRE }
     );
   }
 }

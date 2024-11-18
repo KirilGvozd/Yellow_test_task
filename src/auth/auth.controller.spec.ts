@@ -48,12 +48,7 @@ describe('AuthController', () => {
           password: 'password123',
           name: 'John Doe',
         };
-
-        const hashedPassword = 'hashed-password';
-        const savedUser = { id: 1, ...dto, password: hashedPassword };
-
-        mockUserRepository.findOne.mockResolvedValue(null);
-        mockUserRepository.save.mockResolvedValue(savedUser);
+        const savedUser = { id: 1, ...dto };
 
         jest.spyOn(service, 'create').mockResolvedValue(savedUser);
 
@@ -70,10 +65,8 @@ describe('AuthController', () => {
           name: "John Doe",
         };
 
-        mockUserRepository.findOne.mockResolvedValue({ id: 1, email: dto.email });
-
         jest.spyOn(service, 'create').mockRejectedValue(
-            new BadRequestException('User with this email already exists!'),
+          new BadRequestException('User with this email already exists!'),
         );
 
         await expect(controller.register(dto)).rejects.toThrow(
@@ -98,12 +91,11 @@ describe('AuthController', () => {
 
       const token = 'test-token';
 
-      jest.spyOn(service, 'login').mockResolvedValue(token);
-      mockUserRepository.findOne.mockResolvedValue(user);
-
       const mockResponse = {
         cookie: jest.fn(),
       } as any;
+
+      jest.spyOn(service, 'login').mockResolvedValue(token);
 
       const result = await controller.login(dto, mockResponse);
 
@@ -120,8 +112,6 @@ describe('AuthController', () => {
         email: 'nonexistent@example.com',
         password: 'password123',
       };
-
-      jest.spyOn(service, 'login').mockRejectedValue(new BadRequestException('User not found'));
 
       const mockResponse = {
         cookie: jest.fn(),

@@ -45,7 +45,7 @@ export class RunningRecordService {
       throw new UnauthorizedException('Workout not found or you do not have permission to access it');
     }
 
-    return await this.recordRepository.update(id, updateRunningRecordDto);
+    await this.recordRepository.update(id, updateRunningRecordDto);
   }
 
   async remove(id: number, userId: number) {
@@ -58,7 +58,7 @@ export class RunningRecordService {
       throw new UnauthorizedException('Workout not found or you do not have permission to access it');
     }
 
-    return await this.recordRepository.delete(id);
+    await this.recordRepository.delete(id);
   }
 
   async getWeeklySummary(userId: number) {
